@@ -67,7 +67,7 @@ class Query:
 
         text_paths = self.directory.glob('**/*.htm')
         for text_path in text_paths:
-            with open(text_path) as f:
+            with open(text_path, encoding='utf-8') as f:
                 text = f.read()
             if self.search_text(text):
                 print('match: {}'.format(text_path))
