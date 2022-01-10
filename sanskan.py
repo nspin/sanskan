@@ -7,7 +7,7 @@ from argparse import ArgumentParser, FileType
 
 def main():
     parser = ArgumentParser()
-    parser.add_argument('query_file', metavar='QUERY_FILE', type=FileType('r'))
+    parser.add_argument('query_file', metavar='QUERY_FILE', type=FileType('r', encoding='utf-8'))
     args = parser.parse_args()
 
     try:
