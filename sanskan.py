@@ -32,24 +32,27 @@ class QueryDeserializeError(Exception):
 class Query:
 
     def __init__(self, obj):
-        if 'directory' not in obj:
-            raise QueryDeserializeError('missing "directory" key')
-        if not isinstance(obj['directory'], str):
-            raise QueryDeserializeError('"directory" must be a string')
+        def is_list_of_strings(x):
+            return isinstance(x, list) and all(isinstance(s, str) for s in x)
+        if 'directories' not in obj:
+            raise QueryDeserializeError('missing "directories" key')
+        if not is_list_of_strings(obj['directories']):
+            raise QueryDeserializeError('"directories" must be a list of strings')
         if 'fragments' not in obj:
             raise QueryDeserializeError('missing "fragments" key')
-        if not isinstance(obj['fragments'], list) or not all(isinstance(s, str) for s in obj['fragments']):
+        if not is_list_of_strings(obj['fragments']):
             raise QueryDeserializeError('"fragments" must be a list of strings')
 
-        self.directory = Path(obj['directory'])
+        self.directories = list(map(Path, obj['directories']))
         self.fragments = obj['fragments']
 
         flags = re.IGNORECASE
         self.fragment_regexes = [ re.compile(re.escape(fragment), flags) for fragment in self.fragments ]
 
     def __str__(self):
-        conjunction = ' & '.join('{}'.format(repr(fragment)) for fragment in self.fragments)
-        return "[ {} ] in {}".format(conjunction, self.directory)
+        conjunction = ' & '.join(map(repr, self.fragments))
+        scope = ', '.join(map(str, self.directories))
+        return "[ {} ] in [ {} ]".format(conjunction, scope)
 
     def search_text(self, text):
         for regex in self.fragment_regexes:
@@ -59,19 +62,19 @@ class Query:
         return True
 
     def run(self):
-        if not self.directory.is_dir():
-            print('Error: {} is not a directory'.format(self.directory), file=sys.stderr)
-            sys.exit(1)
-
         num_matches = 0
 
-        text_paths = self.directory.glob('**/*.htm')
-        for text_path in text_paths:
-            with open(text_path, encoding='utf-8') as f:
-                text = f.read()
-            if self.search_text(text):
-                print('match: {}'.format(text_path))
-                num_matches += 1
+        for directory in self.directories:
+            if not directory.is_dir():
+                print('Error: {} is not a directory'.format(directory), file=sys.stderr)
+                sys.exit(1)
+            text_paths = directory.glob('**/*.htm')
+            for text_path in text_paths:
+                with open(text_path, encoding='utf-8') as f:
+                    text = f.read()
+                if self.search_text(text):
+                    print('match: {}'.format(text_path))
+                    num_matches += 1
 
         print('summary: {} matches'.format(num_matches))
     

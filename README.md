@@ -14,7 +14,10 @@ optional arguments:
 
 ```json
 {
-    "directory": "texts/2_pali",
+    "directories": [
+        "texts/1_sanskr",
+        "texts/2_pali"
+    ],
     "fragments": [
         "ekato",
         "paññatti",
