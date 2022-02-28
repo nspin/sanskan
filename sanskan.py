@@ -26,6 +26,8 @@ def main():
 
     query.run()
 
+    input('press <enter> to exit')
+
 class QueryDeserializeError(Exception):
     pass
 
