@@ -1,8 +1,9 @@
-import sys
-import re
-import glob
-import json
 import bisect
+import glob
+import itertools
+import json
+import re
+import sys
 from pathlib import Path
 from argparse import ArgumentParser, FileType
 
@@ -35,6 +36,8 @@ class QueryDeserializeError(Exception):
 class Query:
 
     def __init__(self, obj):
+        self.max_results_per_text = None
+
         def is_list_of_strings(x):
             return isinstance(x, list) and all(isinstance(s, str) for s in x)
         if 'directories' not in obj:
@@ -45,6 +48,15 @@ class Query:
             raise QueryDeserializeError('missing "fragments" key')
         if not is_list_of_strings(obj['fragments']):
             raise QueryDeserializeError('"fragments" must be a list of strings')
+        if 'options' in obj:
+            options = obj['options']
+            if not isinstance(options, dict):
+                raise QueryDeserializeError('"options" must be an object')
+            if 'max_results_per_text' in options:
+                max_results_per_text = options['max_results_per_text']
+                if not isinstance(max_results_per_text, int):
+                    raise QueryDeserializeError('"options.max_results_per_text" must be an integer')
+                self.max_results_per_text = max_results_per_text
 
         self.directories = list(map(Path, obj['directories']))
         self.fragments = obj['fragments']
@@ -57,11 +69,18 @@ class Query:
         scope = ', '.join(map(str, self.directories))
         return "[ {} ] in [ {} ]".format(conjunction, scope)
 
-    def search_text(self, text):
+    def search_text_all(self, text):
         newline_index = NewlineIndex(text)
         for fragment, regex in self.fragment_regexes.items():
             for match in regex.finditer(text):
                 yield fragment, newline_index.line_index(match.start())
+
+    def search_text(self, text):
+        it = self.search_text_all(text)
+        if self.max_results_per_text is None:
+            yield from it
+        else:
+            yield from itertools.islice(it, self.max_results_per_text)
 
     def run(self):
         num_matches = 0
@@ -76,7 +95,7 @@ class Query:
                     text = f.read()
                 for fragment_regex, line_index in self.search_text(text):
                     line_number = line_index + 1
-                    print('[match] {} at {}:{}'.format(fragment_regex, text_path, line_number))
+                    print('[match] "{}" at {}:{}'.format(fragment_regex, text_path, line_number))
                     num_matches += 1
 
         print('[summary] {} matches'.format(num_matches))

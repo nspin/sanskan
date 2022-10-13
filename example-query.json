@@ -10,5 +10,8 @@
         "paññattīti",
         "ubhato",
         "paññatti"
-    ]
+    ],
+    "options": {
+        "max_results_per_text": 5
+    }
 }
